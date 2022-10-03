@@ -18,7 +18,7 @@ type Config struct {
 	GracePeriod time.Duration `default:"10s" split_words:"true" required:"true"`
 
 	// Temporarily disable the connection check.
-	Disabled bool `default:"false"`
+	NotificationDisabled bool `default:"false" split_words:"true"`
 
 	NotifyTelegramBotToken string `split_words:"true" required:"true"`
 	NotifyTelegramReceiver int64  `split_words:"true" required:"true"`

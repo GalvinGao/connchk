@@ -57,16 +57,18 @@ func StartServerMode() {
 		http.ListenAndServe(conf.ServerListenAddr, nil)
 	}()
 
-	for {
-		log.Println("checking status")
-		if err := ckr.Check(); err != nil {
-			log.Println("connection down:", err)
-			notif.Down(time.Now(), err.Error())
-		} else {
-			log.Println("connection up")
-			notif.Up()
-		}
+	if !conf.NotificationDisabled {
+		for {
+			log.Println("checking status")
+			if err := ckr.Check(); err != nil {
+				log.Println("connection down:", err)
+				notif.Down(time.Now(), err.Error())
+			} else {
+				log.Println("connection up")
+				notif.Up()
+			}
 
-		time.Sleep(conf.HeartbeatInterval)
+			time.Sleep(conf.HeartbeatInterval)
+		}
 	}
 }
