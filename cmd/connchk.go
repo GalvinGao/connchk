@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/twilio/twilio-go"
-	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -151,46 +150,18 @@ func StartServerMode() {
 			return
 		}
 
-		if strings.ToLower(strings.TrimSpace(body)) == "start" {
+		if strings.ToLower(strings.TrimSpace(body)) == "start" || strings.ToLower(strings.TrimSpace(body)) == "unstop" {
 			if err := subsvc.Subscribe("sms", from); err != nil {
 				log.Println("failed to subscribe:", err)
-				params := &openapi.CreateMessageParams{
-					From: &conf.NotifyTwilioFromPhone,
-					To:   &from,
-				}
-				params.SetBody("[NETDOWN] Failed to subscribe due to internal server error. Please try again later.")
-
-				_, err := twiliocli.Api.CreateMessage(params)
-				if err != nil {
-					log.Println("failed to send sms:", err)
-				}
-				return
-			} else {
-				params := &openapi.CreateMessageParams{
-					From: &conf.NotifyTwilioFromPhone,
-					To:   &from,
-				}
-				params.SetBody("[NETDOWN] You have successfully subscribed to the service. Send STOP to unsubscribe.")
-
-				_, err := twiliocli.Api.CreateMessage(params)
-				if err != nil {
-					log.Println("failed to send sms:", err)
-				}
 				return
 			}
-		} else {
-			params := &openapi.CreateMessageParams{
-				From: &conf.NotifyTwilioFromPhone,
-				To:   &from,
+			log.Println("subscribed:", from)
+		} else if strings.ToLower(strings.TrimSpace(body)) == "stop" {
+			if err := subsvc.Unsubscribe("sms", from); err != nil {
+				log.Println("failed to unsubscribe:", err)
+				return
 			}
-			params.SetBody("[NETDOWN] Welcome to the netdown notify service. Send START to subscribe.\nNot an official F&M service. Service provided by DipCode.")
-
-			_, err := twiliocli.Api.CreateMessage(params)
-			if err != nil {
-				log.Println("failed to send sms:", err)
-			}
-
-			return
+			log.Println("unsubscribed:", from)
 		}
 	})
 
