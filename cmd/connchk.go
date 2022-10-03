@@ -59,13 +59,11 @@ func StartServerMode() {
 
 	for {
 		log.Println("checking status")
-		now := time.Now()
 		if err := ckr.Check(); err != nil {
 			log.Println("connection down:", err)
-			notif.Down(now, err.Error())
+			notif.Down(time.Now(), err.Error())
 		} else {
-			latency := time.Since(now)
-			log.Println("connection up, latency:", latency)
+			log.Println("connection up")
 			notif.Up()
 		}
 
