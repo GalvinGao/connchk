@@ -28,7 +28,6 @@ type Config struct {
 	NotifyTwilioAccountSID string `split_words:"true" required:"true"`
 	NotifyTwilioAuthToken  string `split_words:"true" required:"true"`
 	NotifyTwilioFromPhone  string `split_words:"true" required:"true"`
-	NotifyTwilioToPhone    string `split_words:"true" required:"true"`
 }
 
 func Parse() (*Config, error) {
