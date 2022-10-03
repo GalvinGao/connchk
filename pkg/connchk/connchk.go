@@ -1,35 +1,31 @@
 package connchk
 
 import (
-	"net"
-	"strings"
+	"errors"
 	"time"
 )
 
 type ConnChk struct {
-	c    int
-	addr string
+	expectInterval time.Duration
+	gracePeriod    time.Duration
+	lastPing       time.Time
 }
 
-// New creates a new TCPConnChk.
-func New(addr string) *ConnChk {
-	return &ConnChk{addr: addr}
+// New creates a new ConnChk.
+func New(expectInterval time.Duration, gracePeriod time.Duration) *ConnChk {
+	return &ConnChk{
+		expectInterval: expectInterval,
+		lastPing:       time.Now().Add(-expectInterval),
+	}
 }
 
-// Do implements ConnChk.Do.
-func (c *ConnChk) Do() error {
-	parts := strings.SplitN(c.addr, "://", 2)
-	if len(parts) != 2 {
-		panic("invalid addr")
-	}
+func (c *ConnChk) Ping() {
+	c.lastPing = time.Now()
+}
 
-	network := parts[0]
-	addr := parts[1]
-
-	conn, err := net.DialTimeout(network, addr, 2*time.Second)
-	if err != nil {
-		return err
+func (c *ConnChk) Check() error {
+	if time.Since(c.lastPing) > c.expectInterval+c.gracePeriod {
+		return errors.New("no ping received during the expected interval")
 	}
-	conn.Close()
 	return nil
 }

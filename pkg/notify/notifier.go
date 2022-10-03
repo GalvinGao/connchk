@@ -21,7 +21,8 @@ type NotifyI interface {
 
 // Notifier only alerts when the connection is down for three or more consecutive checks
 type Notifier struct {
-	n             *notify.Notify
+	n *notify.Notify
+
 	alreadyDownAt *time.Time
 	downCount     int
 }

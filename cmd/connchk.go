@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/GalvinGao/connchk/pkg/config"
@@ -9,7 +10,32 @@ import (
 	"github.com/GalvinGao/connchk/pkg/notify"
 )
 
-func Start() {
+func StartSenderMode() {
+	conf, err := config.Parse()
+	if err != nil {
+		panic(err)
+	}
+
+	client := &http.Client{
+		Timeout: conf.HeartbeatInterval,
+	}
+
+	for {
+		log.Println("sending ping to", conf.ServerAddr)
+		r, err := client.Get(conf.ServerAddr + "/ping")
+		if err != nil {
+			log.Println("failed to send ping:", err)
+		} else if r != nil && r.StatusCode != http.StatusOK {
+			log.Println("unexpected status code while sending ping:", r.StatusCode)
+		} else {
+			log.Println("ping sent")
+		}
+
+		time.Sleep(conf.HeartbeatInterval)
+	}
+}
+
+func StartServerMode() {
 	conf, err := config.Parse()
 	if err != nil {
 		panic(err)
@@ -20,12 +46,21 @@ func Start() {
 		panic(err)
 	}
 
-	ckr := connchk.New(conf.CheckAddr)
+	ckr := connchk.New(conf.HeartbeatInterval, conf.GracePeriod)
+
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("received ping from", r.RemoteAddr)
+		ckr.Ping()
+	})
+
+	go func() {
+		http.ListenAndServe(conf.ServerAddr, nil)
+	}()
 
 	for {
-		log.Println("checking connection")
+		log.Println("checking status")
 		now := time.Now()
-		if err := ckr.Do(); err != nil {
+		if err := ckr.Check(); err != nil {
 			log.Println("connection down:", err)
 			notif.Down(now, err.Error())
 		} else {
@@ -34,6 +69,6 @@ func Start() {
 			notif.Up()
 		}
 
-		time.Sleep(conf.CheckInterval)
+		time.Sleep(conf.HeartbeatInterval)
 	}
 }

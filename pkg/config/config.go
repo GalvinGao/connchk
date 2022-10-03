@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	// The address to check.
-	CheckAddr string `required:"true"`
+	ServerAddr string `required:"true"`
 
-	// The interval between connection checks.
-	CheckInterval time.Duration `default:"2s" split_words:"true" required:"true"`
+	// The interval between each heartbeat.
+	HeartbeatInterval time.Duration `default:"2s" split_words:"true" required:"true"`
+
+	GracePeriod time.Duration `default:"10s" split_words:"true" required:"true"`
 
 	// Temporarily disable the connection check.
 	Disabled bool `default:"false"`

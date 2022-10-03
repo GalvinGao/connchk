@@ -1,7 +1,21 @@
 package main
 
-import "github.com/GalvinGao/connchk/cmd"
+import (
+	"flag"
+
+	"github.com/GalvinGao/connchk/cmd"
+)
 
 func main() {
-	cmd.Start()
+	mode := flag.String("mode", "server", "server or sender")
+	flag.Parse()
+
+	switch *mode {
+	case "server":
+		cmd.StartServerMode()
+	case "sender":
+		cmd.StartSenderMode()
+	default:
+		panic("unknown mode")
+	}
 }
