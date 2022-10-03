@@ -17,6 +17,8 @@ type Config struct {
 
 	GracePeriod time.Duration `default:"10s" split_words:"true" required:"true"`
 
+	MongoUri string `required:"true" split_words:"true"`
+
 	// Temporarily disable the connection check.
 	NotificationDisabled bool `default:"false" split_words:"true"`
 

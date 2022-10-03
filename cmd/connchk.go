@@ -4,11 +4,18 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/twilio/twilio-go"
+	openapi "github.com/twilio/twilio-go/rest/api/v2010"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/GalvinGao/connchk/pkg/config"
 	"github.com/GalvinGao/connchk/pkg/connchk"
 	"github.com/GalvinGao/connchk/pkg/notify"
+	"github.com/GalvinGao/connchk/pkg/subs"
 )
 
 func StartSenderMode() {
@@ -54,7 +61,19 @@ func StartServerMode() {
 		panic(err)
 	}
 
-	notif, err := notify.New(conf)
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(conf.MongoUri))
+	if err != nil {
+		panic(err)
+	}
+
+	subsvc := subs.New(client)
+
+	twiliocli := twilio.NewRestClientWithParams(twilio.ClientParams{
+		Username: conf.NotifyTwilioAccountSID,
+		Password: conf.NotifyTwilioAuthToken,
+	})
+
+	notif, err := notify.New(conf, subsvc, twiliocli)
 	if err != nil {
 		panic(err)
 	}
@@ -64,6 +83,115 @@ func StartServerMode() {
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("received ping from", r.RemoteAddr)
 		ckr.Ping()
+	})
+
+	http.HandleFunc("/subscribe", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("received subscription request from", r.RemoteAddr)
+
+		channel := r.URL.Query().Get("channel")
+		if channel != "sms" {
+			log.Println("unknown channel:", channel)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("unknown channel"))
+			return
+		}
+
+		endpoint := r.URL.Query().Get("endpoint")
+		if endpoint == "" || !strings.HasPrefix(endpoint, "+") {
+			log.Println("invalid endpoint:", endpoint)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("invalid endpoint"))
+			return
+		}
+
+		if err := subsvc.Subscribe("sms", endpoint); err != nil {
+			log.Println("failed to subscribe:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("failed to subscribe"))
+			return
+		}
+	})
+
+	http.HandleFunc("/unsubscribe", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("received unsubscription request from", r.RemoteAddr)
+
+		channel := r.URL.Query().Get("channel")
+		if channel != "sms" {
+			log.Println("unknown channel:", channel)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("unknown channel"))
+			return
+		}
+
+		endpoint := r.URL.Query().Get("endpoint")
+		if endpoint == "" || !strings.HasPrefix(endpoint, "+") {
+			log.Println("invalid endpoint:", endpoint)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("invalid endpoint"))
+			return
+		}
+
+		if err := subsvc.Unsubscribe("sms", endpoint); err != nil {
+			log.Println("failed to unsubscribe:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("failed to unsubscribe"))
+			return
+		}
+	})
+
+	http.HandleFunc("/callback/sms", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("received sms delivery report from", r.RemoteAddr)
+
+		from := r.URL.Query().Get("from")
+		body := r.URL.Query().Get("body")
+		if from == "" || body == "" {
+			log.Println("invalid sms delivery report:", from, body)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("invalid sms delivery report"))
+			return
+		}
+
+		if strings.ToLower(strings.TrimSpace(body)) == "start" {
+			if err := subsvc.Subscribe("sms", from); err != nil {
+				log.Println("failed to subscribe:", err)
+				params := &openapi.CreateMessageParams{
+					From: &conf.NotifyTwilioFromPhone,
+					To:   &from,
+				}
+				params.SetBody("[NETDOWN] Failed to subscribe due to internal server error. Please try again later.")
+
+				_, err := twiliocli.Api.CreateMessage(params)
+				if err != nil {
+					log.Println("failed to send sms:", err)
+				}
+				return
+			} else {
+				params := &openapi.CreateMessageParams{
+					From: &conf.NotifyTwilioFromPhone,
+					To:   &from,
+				}
+				params.SetBody("[NETDOWN] You have successfully subscribed to the service. Send STOP to unsubscribe.")
+
+				_, err := twiliocli.Api.CreateMessage(params)
+				if err != nil {
+					log.Println("failed to send sms:", err)
+				}
+				return
+			}
+		} else {
+			params := &openapi.CreateMessageParams{
+				From: &conf.NotifyTwilioFromPhone,
+				To:   &from,
+			}
+			params.SetBody("[NETDOWN] Welcome to the netdown notify service. Send START to subscribe.\nNot an official F&M service. Service provided by DipCode.")
+
+			_, err := twiliocli.Api.CreateMessage(params)
+			if err != nil {
+				log.Println("failed to send sms:", err)
+			}
+
+			return
+		}
 	})
 
 	go func() {
