@@ -3,6 +3,7 @@ package subs
 import (
 	"context"
 	"log"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -48,13 +49,21 @@ type Subscription struct {
 	// LastNotifiedError string `bson:"last_notified_error"`
 }
 
+type DownRecord struct {
+	// DownAt is the time when the connection is down.
+	DownAt int64 `bson:"down_at"`
+
+	// UpAt is the time when the connection is up.
+	UpAt int64 `bson:"up_at"`
+}
+
 func (s *Svc) Subscribe(channel string, endpoint string) error {
 	coll := s.mongo.Database("connchk").Collection("subscriptions")
 	// insert or update a subscription
 	sub := Subscription{
-		Channel:   channel,
-		Endpoint:  endpoint,
-		Status:    "active",
+		Channel:  channel,
+		Endpoint: endpoint,
+		Status:   "active",
 	}
 
 	u, err := coll.UpdateOne(
@@ -125,4 +134,40 @@ func (s *Svc) ListActiveSubs(channel string) ([]Subscription, error) {
 	}
 
 	return subs, nil
+}
+
+func (s *Svc) RecordDown(at time.Time) error {
+	coll := s.mongo.Database("connchk").Collection("down_records")
+	// record the down time
+	dr := DownRecord{
+		DownAt: at.Unix(),
+	}
+
+	_, err := coll.InsertOne(context.Background(), dr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Svc) RecordUp(at time.Time) error {
+	coll := s.mongo.Database("connchk").Collection("down_records")
+	// record the up time
+	_, err := coll.UpdateOne(
+		context.Background(),
+		bson.M{
+			"up_at": 0,
+		},
+		bson.M{
+			"$set": bson.M{
+				"up_at": at.Unix(),
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
