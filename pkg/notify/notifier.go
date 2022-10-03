@@ -27,6 +27,7 @@ type Notifier struct {
 	twiliocli  *twilio.RestClient
 	twiliosid  string
 	twiliofrom string
+	downCount  int
 
 	alreadyDownAt *time.Time
 	subsvc        *subs.Svc
@@ -50,6 +51,10 @@ func New(conf *config.Config, subsvc *subs.Svc, twiliocli *twilio.RestClient) (*
 }
 
 func (n *Notifier) Down(at time.Time, with string) {
+	n.downCount++
+	if n.downCount < 3 {
+		return
+	}
 	if n.alreadyDownAt != nil {
 		return
 	}
@@ -69,6 +74,7 @@ func (n *Notifier) sendDown(at time.Time) {
 }
 
 func (n *Notifier) Up() {
+	n.downCount = 0
 	if n.alreadyDownAt == nil {
 		return
 	}
