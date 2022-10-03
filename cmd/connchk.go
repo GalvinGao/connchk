@@ -70,5 +70,8 @@ func StartServerMode() {
 
 			time.Sleep(conf.HeartbeatInterval)
 		}
+	} else {
+		log.Println("notification disabled")
+		select {}
 	}
 }
