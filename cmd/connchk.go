@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -17,12 +18,23 @@ func StartSenderMode() {
 	}
 
 	client := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        20,
+			MaxIdleConnsPerHost: 20,
+		},
 		Timeout: conf.HeartbeatInterval,
 	}
 
 	for {
 		log.Println("sending ping to", conf.PingToAddr)
-		r, err := client.Get(conf.PingToAddr + "/ping")
+		req, err := http.NewRequest("GET", conf.PingToAddr+"/ping", nil)
+		if err != nil {
+			log.Println("failed to create request:", err)
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), conf.HeartbeatInterval)
+		req = req.WithContext(ctx)
+		r, err := client.Do(req)
 		if err != nil {
 			log.Println("failed to send ping:", err)
 		} else if r != nil && r.StatusCode != http.StatusOK {
@@ -30,6 +42,7 @@ func StartSenderMode() {
 		} else {
 			log.Println("ping sent")
 		}
+		cancel()
 
 		time.Sleep(conf.HeartbeatInterval)
 	}
