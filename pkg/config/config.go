@@ -8,7 +8,9 @@ import (
 )
 
 type Config struct {
-	ServerAddr string `required:"true"`
+	PingToAddr string `required:"true" split_words:"true"`
+
+	ServerListenAddr string `required:"true" split_words:"true"`
 
 	// The interval between each heartbeat.
 	HeartbeatInterval time.Duration `default:"2s" split_words:"true" required:"true"`

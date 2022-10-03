@@ -21,8 +21,8 @@ func StartSenderMode() {
 	}
 
 	for {
-		log.Println("sending ping to", conf.ServerAddr)
-		r, err := client.Get(conf.ServerAddr + "/ping")
+		log.Println("sending ping to", conf.PingToAddr)
+		r, err := client.Get(conf.PingToAddr + "/ping")
 		if err != nil {
 			log.Println("failed to send ping:", err)
 		} else if r != nil && r.StatusCode != http.StatusOK {
@@ -54,7 +54,7 @@ func StartServerMode() {
 	})
 
 	go func() {
-		http.ListenAndServe(conf.ServerAddr, nil)
+		http.ListenAndServe(conf.ServerListenAddr, nil)
 	}()
 
 	for {
