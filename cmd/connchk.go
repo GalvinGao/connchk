@@ -163,8 +163,6 @@ func StartServerMode() {
 			}
 			log.Println("unsubscribed:", from)
 		}
-
-		w.Write([]byte("<Response></Response>"))
 	})
 
 	go func() {
