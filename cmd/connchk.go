@@ -141,8 +141,8 @@ func StartServerMode() {
 	http.HandleFunc("/callback/sms", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("received sms delivery report from", r.RemoteAddr)
 
-		from := r.URL.Query().Get("from")
-		body := r.URL.Query().Get("body")
+		from := r.URL.Query().Get("From")
+		body := r.URL.Query().Get("Body")
 		if from == "" || body == "" {
 			log.Println("invalid sms delivery report:", from, body)
 			w.WriteHeader(http.StatusBadRequest)
@@ -163,6 +163,8 @@ func StartServerMode() {
 			}
 			log.Println("unsubscribed:", from)
 		}
+
+		w.Write([]byte("<Response></Response>"))
 	})
 
 	go func() {
