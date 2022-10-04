@@ -53,6 +53,8 @@ type DownRecord struct {
 	// DownAt is the time when the connection is down.
 	DownAt int64 `bson:"down_at"`
 
+	DownReason string `bson:"down_reason"`
+
 	// UpAt is the time when the connection is up.
 	UpAt int64 `bson:"up_at"`
 }
@@ -137,11 +139,12 @@ func (s *Svc) ListActiveSubs(channel string) ([]Subscription, error) {
 	return subs, nil
 }
 
-func (s *Svc) RecordDown(at time.Time) error {
+func (s *Svc) RecordDown(at time.Time, reason string) error {
 	coll := s.mongo.Database("connchk").Collection("down_records")
 	// record the down time
 	dr := DownRecord{
-		DownAt: at.UnixMicro(),
+		DownAt:     at.UnixMicro(),
+		DownReason: reason,
 	}
 
 	_, err := coll.InsertOne(context.Background(), dr)

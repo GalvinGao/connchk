@@ -62,7 +62,7 @@ func (n *Notifier) Down(at time.Time, with string) {
 
 	log.Println("sending notification that internet is down due to error:", with)
 
-	go n.subsvc.RecordDown(at)
+	go n.subsvc.RecordDown(at, with)
 	go n.sendDown(at)
 }
 
