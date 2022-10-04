@@ -127,7 +127,8 @@ func (s *Svc) ListActiveSubs(channel string) ([]Subscription, error) {
 		var sub Subscription
 		err := cur.Decode(&sub)
 		if err != nil {
-			return nil, err
+			log.Println("failed to decode subscription:", err)
+			continue
 		}
 
 		subs = append(subs, sub)
