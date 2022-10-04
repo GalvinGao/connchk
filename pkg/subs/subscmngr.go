@@ -140,7 +140,7 @@ func (s *Svc) RecordDown(at time.Time) error {
 	coll := s.mongo.Database("connchk").Collection("down_records")
 	// record the down time
 	dr := DownRecord{
-		DownAt: at.Unix(),
+		DownAt: at.UnixMicro(),
 	}
 
 	_, err := coll.InsertOne(context.Background(), dr)
@@ -157,11 +157,11 @@ func (s *Svc) RecordUp(at time.Time) error {
 	_, err := coll.UpdateOne(
 		context.Background(),
 		bson.M{
-			"up_at": 0,
+			"down_at": at.UnixMicro(),
 		},
 		bson.M{
 			"$set": bson.M{
-				"up_at": at.Unix(),
+				"up_at": at.UnixMicro(),
 			},
 		},
 	)
