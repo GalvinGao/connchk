@@ -165,7 +165,7 @@ func (s *Svc) RecordUp(at time.Time) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				"up_at": at.UnixMicro(),
+				"up_at": time.Now().UnixMicro(),
 			},
 		},
 	)
